@@ -2,6 +2,7 @@ import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from '../index';
 import { getAuthHeaders, getToken } from './auth';
 import axios from 'axios';
+import { loginService as lumosLoginService, ordersService as lumosOrdersService } from 'lumos-ts';
 
 /**
  * Creates a TRPC client for making API calls to the backend
