@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenith OLMS API Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #1890ff;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #333;
+      margin-top: 30px;
+    }
+    .card {
+      background: #f9f9f9;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .endpoint {
+      background: #e6f7ff;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #1890ff;
+      border: none;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #40a9ff;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      max-height: 200px;
+      margin-top: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+    .badge.admin {
+      background: #ff4d4f;
+      color: white;
+    }
+    .badge.factory {
+      background: #ffa940;
+      color: white;
+    }
+    .badge.public {
+      background: #52c41a;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zenith OLMS API Test - lumos-ts Integration</h1>
+  <p>This page demonstrates the API endpoints with lumos-ts role-based access control.</p>
+  
+  <h2>API Health Check</h2>
+  <div class="card">
+    <div class="endpoint">GET /api/health</div>
+    <button onclick="callApi('/api/health', 'healthResponse')">Test Health Endpoint</button>
+    <pre id="healthResponse">Response will appear here...</pre>
+  </div>
+  
+  <h2>Authentication</h2>
+  <div class="card">
+    <div class="endpoint">POST /trpc/users.login <span class="badge public">Public</span></div>
+    <button onclick="login('admin@zenith.com', 'admin123')">Login as Admin</button>
+    <button onclick="login('customer@zenith.com', 'customer123')">Login as Customer</button>
+    <button onclick="login('factory@zenith.com', 'factory123')">Login as Factory</button>
+    <pre id="loginResponse">Response will appear here...</pre>
+  </div>
+  
+  <h2>User Management</h2>
+  <div class="card">
+    <div class="endpoint">GET /trpc/users.me <span class="badge public">Protected</span></div>
+    <button onclick="callTrpc('users.me', {})">Get Current User</button>
+    <pre id="meResponse">Response will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <div class="endpoint">GET /trpc/users.getAll <span class="badge admin">Admin Only</span></div>
+    <button onclick="callTrpc('users.getAll', {})">Get All Users</button>
+    <pre id="usersResponse">Response will appear here...</pre>
+  </div>
+  
+  <h2>Order Management</h2>
+  <div class="card">
+    <div class="endpoint">GET /trpc/orders.getAll <span class="badge admin">Admin Only</span></div>
+    <button onclick="callTrpc('orders.getAll', {})">Get All Orders</button>
+    <pre id="ordersResponse">Response will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <div class="endpoint">GET /trpc/orders.getByUserId <span class="badge public">Protected</span></div>
+    <button onclick="callTrpc('orders.getByUserId', {userId: 'customer1'})">Get Customer1 Orders</button>
+    <pre id="customerOrdersResponse">Response will appear here...</pre>
+  </div>
+  
+  <h2>ERP Integration</h2>
+  <div class="card">
+    <div class="endpoint">GET /trpc/erp.getLogicMateStatus <span class="badge admin">Admin Only</span></div>
+    <button onclick="callTrpc('erp.getLogicMateStatus', {})">Get LogicMate Status</button>
+    <pre id="logicMateResponse">Response will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <div class="endpoint">GET /trpc/erp.getSuntecStatus <span class="badge factory">Factory Only</span></div>
+    <button onclick="callTrpc('erp.getSuntecStatus', {})">Get Suntec Status</button>
+    <pre id="suntecResponse">Response will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <div class="endpoint">GET /api/erp/sync</div>
+    <button onclick="callApi('/api/erp/sync', 'erpSyncResponse')">Sync All ERPs</button>
+    <pre id="erpSyncResponse">Response will appear here...</pre>
+  </div>
+  
+  <script>
+    // Auth state with JWT token storage
+    let authToken = localStorage.getItem('auth_token') || null;
+    let currentUser = JSON.parse(localStorage.getItem('current_user') || 'null');
+    
+    // Update UI based on auth state
+    function updateAuthState() {
+      const authStatusElem = document.createElement('div');
+      authStatusElem.style.position = 'fixed';
+      authStatusElem.style.top = '10px';
+      authStatusElem.style.right = '10px';
+      authStatusElem.style.padding = '8px 15px';
+      authStatusElem.style.borderRadius = '4px';
+      authStatusElem.style.fontWeight = 'bold';
+      
+      if (authToken && currentUser) {
+        authStatusElem.textContent = `Logged in as: ${currentUser.name} (${currentUser.role})`;
+        authStatusElem.style.backgroundColor = '#e6f7ff';
+        authStatusElem.style.color = '#1890ff';
+        
+        // Add logout button
+        const logoutBtn = document.createElement('button');
+        logoutBtn.textContent = 'Logout';
+        logoutBtn.style.marginLeft = '10px';
+        logoutBtn.style.padding = '3px 8px';
+        logoutBtn.style.backgroundColor = '#ff4d4f';
+        logoutBtn.style.color = 'white';
+        logoutBtn.style.border = 'none';
+        logoutBtn.style.borderRadius = '4px';
+        logoutBtn.style.cursor = 'pointer';
+        logoutBtn.onclick = logout;
+        
+        authStatusElem.appendChild(logoutBtn);
+      } else {
+        authStatusElem.textContent = 'Not logged in';
+        authStatusElem.style.backgroundColor = '#fff2e8';
+        authStatusElem.style.color = '#fa541c';
+      }
+      
+      // Remove any existing auth status element
+      const existingElem = document.getElementById('auth-status');
+      if (existingElem) {
+        existingElem.remove();
+      }
+      
+      authStatusElem.id = 'auth-status';
+      document.body.appendChild(authStatusElem);
+    }
+    
+    // Logout function
+    function logout() {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('current_user');
+      authToken = null;
+      currentUser = null;
+      updateAuthState();
+      alert('Logged out successfully');
+    }
+    
+    // API helper function with improved error handling
+    async function callApi(endpoint, responseElemId) {
+      try {
+        const headers = {};
+        // Include auth token if available
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
+        const response = await fetch(`http://localhost:4000${endpoint}`, { 
+          headers 
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        document.getElementById(responseElemId).textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        document.getElementById(responseElemId).textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // TRPC helper function with token handling
+    async function callTrpc(path, input) {
+      try {
+        const [namespace, method] = path.split('.');
+        const responseElemId = path.replace('.', '') + 'Response';
+        
+        // Add auth token if available
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
+        const response = await fetch(`http://localhost:4000/trpc/${path}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            json: input
+          })
+        });
+        
+        const data = await response.json();
+        
+        // Handle error responses
+        if (data.error) {
+          if (data.error.code === 'UNAUTHORIZED') {
+            // Token might be expired
+            if (authToken) {
+              localStorage.removeItem('auth_token');
+              authToken = null;
+              updateAuthState();
+              alert('Your session has expired. Please login again.');
+            }
+          }
+        }
+        
+        document.getElementById(responseElemId).textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        document.getElementById(responseElemId).textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Login function with token storing
+    async function login(email, password) {
+      try {
+        const response = await fetch('http://localhost:4000/trpc/users.login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            json: { email, password }
+          })
+        });
+        
+        const data = await response.json();
+        document.getElementById('loginResponse').textContent = JSON.stringify(data, null, 2);
+        
+        // Store token and user data
+        if (data.result?.data?.token) {
+          localStorage.setItem('auth_token', data.result.data.token);
+          localStorage.setItem('current_user', JSON.stringify(data.result.data.user));
+          
+          authToken = data.result.data.token;
+          currentUser = data.result.data.user;
+          
+          updateAuthState();
+          alert(`Logged in as ${data.result.data.user.name} (${data.result.data.user.role})`);
+        }
+      } catch (error) {
+        document.getElementById('loginResponse').textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Initialize
+    window.onload = function() {
+      updateAuthState();
+      callApi('/api/health', 'healthResponse');
+    };
+  </script>
+</body>
+</html>
