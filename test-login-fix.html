@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenith Login Fix Test</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .panel {
+      flex: 1;
+      min-width: 360px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom: 2px solid #1890ff;
+      color: #1890ff;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      border: 1px solid #d9d9d9;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    button {
+      background-color: #1890ff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #40a9ff;
+    }
+    .error {
+      color: #f5222d;
+      background-color: #fff1f0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 12px 0;
+      border: 1px solid #ffa39e;
+    }
+    .console {
+      background-color: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      overflow: auto;
+      height: 200px;
+      margin-top: 20px;
+    }
+    .dashboard {
+      padding: 20px;
+      background-color: #fafafa;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      background-color: #f0f5ff;
+      border-radius: 4px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1890ff;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #8c8c8c;
+    }
+    code {
+      display: block;
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      margin: 8px 0;
+      white-space: pre-wrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .badge-admin { background-color: #e6f7ff; color: #1890ff; }
+    .badge-factory { background-color: #fff7e6; color: #fa8c16; }
+    .badge-customer { background-color: #f6ffed; color: #52c41a; }
+    .highlight {
+      background-color: #fff7e6;
+      padding: 16px;
+      border-radius: 4px;
+      border-left: 4px solid #faad14;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zenith Login Test Page</h1>
+  
+  <div class="highlight">
+    <p><strong>Purpose:</strong> This page demonstrates the login loop fix by testing different user roles and implementations.</p>
+    <ul>
+      <li>Choose any user role to login</li>
+      <li>Compare broken vs. fixed dashboard implementations</li>
+      <li>Monitor API calls in the console output</li>
+    </ul>
+  </div>
+  
+  <div id="app"></div>
+  
+  <script type="text/babel">
+    // Test users
+    const users = [
+      { id: 'admin-001', email: 'admin@zenith.com', password: 'admin123', name: 'Admin User', role: 'admin' },
+      { id: 'factory-001', email: 'factory@zenith.com', password: 'factory123', name: 'Factory Staff', role: 'factory' },
+      { id: 'customer-001', email: 'customer@zenith.com', password: 'customer123', name: 'Test Customer', role: 'customer' }
+    ];
+    
+    // Mock localStorage
+    const mockStorage = {
+      items: {},
+      getItem(key) {
+        return this.items[key] || null;
+      },
+      setItem(key, value) {
+        this.items[key] = value;
+        console.log(`localStorage: ${key} stored`);
+      },
+      removeItem(key) {
+        delete this.items[key];
+        console.log(`localStorage: ${key} removed`);
+      },
+      clear() {
+        this.items = {};
+        console.log('localStorage: cleared');
+      }
+    };
+    
+    // Mock API with fetch tracking
+    const mockApi = {
+      fetchCount: 0,
+      resetCount() {
+        this.fetchCount = 0;
+      },
+      authenticate(email, password) {
+        console.log(`Authenticating user: ${email}`);
+        const user = users.find(u => u.email === email && u.password === password);
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            if (user) {
+              const token = `mock_token_${user.id}_${Date.now()}`;
+              resolve({ success: true, user: { ...user, password: undefined }, token });
+            } else {
+              resolve({ success: false, error: 'Invalid credentials' });
+            }
+          }, 500);
+        });
+      },
+      fetchOrders(userId, role) {
+        this.fetchCount++;
+        console.log(`API Call #${this.fetchCount}: Fetching orders for ${role} role`);
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            const orders = [
+              { id: 'order-001', customer_name: 'ABC Corp', amount: 1299, status: 'pending' },
+              { id: 'order-002', customer_name: 'XYZ Inc', amount: 2499, status: 'shipped' },
+              { id: 'order-003', customer_name: 'Acme Co', amount: 999, status: 'delivered' }
+            ];
+            console.log(`API Call #${this.fetchCount}: Fetched ${orders.length} orders`);
+            resolve(orders);
+          }, 300);
+        });
+      },
+      fetchAnalytics() {
+        this.fetchCount++;
+        console.log(`API Call #${this.fetchCount}: Fetching analytics data`);
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            const data = {
+              totalOrders: 3,
+              byStatus: {
+                pending: 1,
+                shipped: 1,
+                delivered: 1
+              }
+            };
+            console.log(`API Call #${this.fetchCount}: Analytics fetched`);
+            resolve(data);
+          }, 300);
+        });
+      }
+    };
+    
+    // Auth utilities
+    const auth = {
+      getToken: () => {
+        const token = mockStorage.getItem('auth_token');
+        console.log('Auth token exists in localStorage:', !!token);
+        return token;
+      },
+      storeAuth: (token, user) => {
+        mockStorage.setItem('auth_token', token);
+        mockStorage.setItem('current_user', JSON.stringify(user));
+      },
+      getCurrentUser: () => {
+        const userJson = mockStorage.getItem('current_user');
+        if (!userJson) return null;
+        return JSON.parse(userJson);
+      },
+      isAuthenticated: () => {
+        return !!auth.getToken() && !!auth.getCurrentUser();
+      },
+      logout: () => {
+        mockStorage.removeItem('auth_token');
+        mockStorage.removeItem('current_user');
+      }
+    };
+    
+    // Console logging
+    const originalConsoleLog = console.log;
+    console.log = function(...args) {
+      originalConsoleLog.apply(console, args);
+      
+      const message = args.join(' ');
+      const consoleEl = document.getElementById('debug-console');
+      if (consoleEl) {
+        const entry = document.createElement('div');
+        entry.textContent = `» ${message}`;
+        consoleEl.appendChild(entry);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
+    };
+    
+    // Login Form Component
+    function LoginForm({ onLogin }) {
+      const [email, setEmail] = React.useState('admin@zenith.com');
+      const [password, setPassword] = React.useState('admin123');
+      const [loading, setLoading] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      
+      // Quick login with preset credentials
+      const handleQuickLogin = async (userType) => {
+        const loginInfo = users.find(u => u.role === userType);
+        setEmail(loginInfo.email);
+        setPassword(loginInfo.password);
+        setTimeout(() => handleLogin(null, loginInfo), 300);
+      };
+      
+      const handleLogin = async (e, customLoginInfo = null) => {
+        if (e) e.preventDefault();
+        
+        try {
+          setLoading(true);
+          setError(null);
+          
+          const loginEmail = customLoginInfo ? customLoginInfo.email : email;
+          const loginPassword = customLoginInfo ? customLoginInfo.password : password;
+          
+          console.log(`Login attempt: ${loginEmail}`);
+          
+          const result = await mockApi.authenticate(loginEmail, loginPassword);
+          
+          if (result.success) {
+            auth.storeAuth(result.token, result.user);
+            mockApi.resetCount(); // Reset API call counter
+            onLogin(result.user);
+          } else {
+            console.error('Login failed:', result.error);
+            setError(result.error);
+          }
+        } catch (error) {
+          console.error('Login process error:', error);
+          setError('An unexpected error occurred');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      return (
+        <div className="panel">
+          <h2>Login</h2>
+          {error && <div className="error">{error}</div>}
+          
+          <form onSubmit={handleLogin}>
+            <div>
+              <label>Email</label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label>Password</label>
+              <input 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+          
+          <div style={{ marginTop: '24px' }}>
+            <h3>Quick Login Options</h3>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <button 
+                onClick={() => handleQuickLogin('admin')}
+                disabled={loading}
+                style={{ backgroundColor: '#1890ff' }}
+              >
+                Login as Admin
+              </button>
+              <button 
+                onClick={() => handleQuickLogin('factory')}
+                disabled={loading}
+                style={{ backgroundColor: '#fa8c16' }}
+              >
+                Login as Factory
+              </button>
+              <button 
+                onClick={() => handleQuickLogin('customer')}
+                disabled={loading}
+                style={{ backgroundColor: '#52c41a' }}
+              >
+                Login as Customer
+              </button>
+            </div>
+            
+            <div className="card">
+              <h4>Test Accounts</h4>
+              <div><strong>Admin:</strong> admin@zenith.com / admin123</div>
+              <div><strong>Factory:</strong> factory@zenith.com / factory123</div>
+              <div><strong>Customer:</strong> customer@zenith.com / customer123</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Broken Dashboard with loop issue
+    function BrokenDashboard() {
+      const [orders, setOrders] = React.useState([]);
+      const [analytics, setAnalytics] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const user = auth.getCurrentUser();
+      
+      // Limit fetches to prevent browser crash
+      const maxFetches = React.useRef(15);
+      const fetchCount = React.useRef(0);
+      
+      React.useEffect(() => {
+        // Limit fetches to prevent browser crash
+        if (fetchCount.current >= maxFetches.current) {
+          console.log(`BrokenDashboard - Reached maximum fetch limit (${maxFetches.current}). This prevents browser crash.`);
+          console.log('BrokenDashboard - In a real app without this limit, this would continue infinitely.');
+          return;
+        }
+        
+        fetchCount.current++;
+        
+        const fetchData = async () => {
+          setLoading(true);
+          
+          try {
+            // This will re-fetch on every render because of 'user' dependency
+            const fetchedOrders = await mockApi.fetchOrders(user.id, user.role);
+            setOrders(fetchedOrders);
+            
+            if (user.role === 'admin') {
+              const analyticsData = await mockApi.fetchAnalytics();
+              setAnalytics(analyticsData);
+            }
+          } catch (err) {
+            console.error('Error loading data:', err);
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        fetchData();
+      }, [user]); // PROBLEM: depending on whole user object
+      
+      if (loading && orders.length === 0) {
+        return <div>Loading dashboard data...</div>;
+      }
+      
+      return (
+        <div className="dashboard">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Dashboard (Broken Implementation)</h2>
+            <div>
+              <span className={`badge badge-${user.role}`}>{user.role}</span>
+              <div>{user.name} ({user.email})</div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <h3>Orders ({orders.length})</h3>
+            <ul>
+              {orders.map(order => (
+                <li key={order.id}>
+                  Order #{order.id} - {order.customer_name} (${order.amount})
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          {user.role === 'admin' && analytics && (
+            <div className="card">
+              <h3>Analytics</h3>
+              <div className="stats">
+                <div className="stat-card">
+                  <div className="stat-value">{analytics.totalOrders}</div>
+                  <div className="stat-label">Total Orders</div>
+                </div>
+                {Object.entries(analytics.byStatus).map(([status, count]) => (
+                  <div className="stat-card" key={status}>
+                    <div className="stat-value">{count}</div>
+                    <div className="stat-label">{status}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="card" style={{ marginTop: '20px', backgroundColor: '#fff2e8', border: '1px solid #ffbb96' }}>
+            <h3 style={{ color: '#fa541c' }}>About This Implementation (Broken)</h3>
+            <p>This implementation has an infinite loop due to React's dependency array handling:</p>
+            <code>
+              useEffect(() => {
+                // fetch data...
+              }, [user]); // Whole user object causes re-renders
+            </code>
+            <p>Since objects are compared by reference, any re-render creates a new user object, triggering the effect again.</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Fixed Dashboard with proper dependencies
+    function FixedDashboard() {
+      const [orders, setOrders] = React.useState([]);
+      const [analytics, setAnalytics] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const [isFetching, setIsFetching] = React.useState(false);
+      const user = auth.getCurrentUser();
+      
+      // Store user ID in ref for dependency stability
+      const userIdRef = React.useRef(user?.id);
+      
+      // Load orders with optimizations
+      React.useEffect(() => {
+        // Skip if already fetching
+        if (isFetching) {
+          console.log('FixedDashboard - Skipping fetch because already fetching');
+          return;
+        }
+        
+        // Skip if no user
+        if (!user) {
+          console.log('FixedDashboard - Skipping fetch because no user');
+          return;
+        }
+        
+        // Skip if user ID hasn't changed
+        if (user.id === userIdRef.current && orders.length > 0) {
+          console.log('FixedDashboard - Skipping fetch because user ID unchanged and already have orders');
+          return;
+        }
+        
+        // Update ref with current user ID
+        userIdRef.current = user.id;
+        
+        console.log('FixedDashboard - SINGLE fetch operation started');
+        
+        const fetchData = async () => {
+          setIsFetching(true);
+          setLoading(true);
+          
+          try {
+            const fetchedOrders = await mockApi.fetchOrders(user.id, user.role);
+            setOrders(fetchedOrders);
+            
+            if (user.role === 'admin') {
+              const analyticsData = await mockApi.fetchAnalytics();
+              setAnalytics(analyticsData);
+            }
+            
+            console.log('FixedDashboard - SINGLE fetch operation completed');
+          } catch (err) {
+            console.error('Error loading data:', err);
+          } finally {
+            setLoading(false);
+            setIsFetching(false);
+          }
+        };
+        
+        fetchData();
+      }, [user?.id]); // FIXED: only depend on user ID
+      
+      if (loading && orders.length === 0) {
+        return <div>Loading dashboard data...</div>;
+      }
+      
+      return (
+        <div className="dashboard">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Dashboard (Fixed Implementation)</h2>
+            <div>
+              <span className={`badge badge-${user.role}`}>{user.role}</span>
+              <div>{user.name} ({user.email})</div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <h3>Orders ({orders.length})</h3>
+            <ul>
+              {orders.map(order => (
+                <li key={order.id}>
+                  Order #{order.id} - {order.customer_name} (${order.amount})
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          {user.role === 'admin' && analytics && (
+            <div className="card">
+              <h3>Analytics</h3>
+              <div className="stats">
+                <div className="stat-card">
+                  <div className="stat-value">{analytics.totalOrders}</div>
+                  <div className="stat-label">Total Orders</div>
+                </div>
+                {Object.entries(analytics.byStatus).map(([status, count]) => (
+                  <div className="stat-card" key={status}>
+                    <div className="stat-value">{count}</div>
+                    <div className="stat-label">{status}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="card" style={{ marginTop: '20px', backgroundColor: '#f6ffed', border: '1px solid #b7eb8f' }}>
+            <h3 style={{ color: '#52c41a' }}>About This Implementation (Fixed)</h3>
+            <p>This implementation fixes the loop issue with three key improvements:</p>
+            <code>
+              const [isFetching, setIsFetching] = useState(false);
+
+              useEffect(() => {
+                // Skip if already fetching or no user
+                if (isFetching || !user) return;
+                
+                // Skip if user ID hasn't changed
+                if (user.id === userIdRef.current && orders.length > 0) return;
+                
+                // ... fetch data ...
+              }, [user?.id]); // Only depend on user ID
+            </code>
+          </div>
+        </div>
+      );
+    }
+    
+    // Main App Component
+    function App() {
+      const [activeTab, setActiveTab] = React.useState('broken');
+      const [authenticated, setAuthenticated] = React.useState(auth.isAuthenticated());
+      const [currentUser, setCurrentUser] = React.useState(auth.getCurrentUser());
+      
+      React.useEffect(() => {
+        if (!authenticated) {
+          auth.logout();
+          mockApi.resetCount();
+        }
+      }, []);
+      
+      const handleLogin = (user) => {
+        setAuthenticated(true);
+        setCurrentUser(user);
+      };
+      
+      const handleLogout = () => {
+        auth.logout();
+        setAuthenticated(false);
+        setCurrentUser(null);
+        mockApi.resetCount();
+        console.log('Logged out and reset stats');
+        
+        // Clear console
+        const consoleEl = document.getElementById('debug-console');
+        if (consoleEl) {
+          consoleEl.innerHTML = '';
+        }
+      };
+      
+      return (
+        <div className="container">
+          {authenticated ? (
+            <>
+              <div style={{ flex: 2, minWidth: '500px' }}>
+                <div className="tabs">
+                  <div 
+                    className={`tab ${activeTab === 'broken' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('broken')}
+                  >
+                    Broken Implementation
+                  </div>
+                  <div 
+                    className={`tab ${activeTab === 'fixed' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('fixed')}
+                  >
+                    Fixed Implementation
+                  </div>
+                </div>
+                
+                {activeTab === 'broken' && <BrokenDashboard />}
+                {activeTab === 'fixed' && <FixedDashboard />}
+                
+                <div style={{ marginTop: '20px' }}>
+                  <button onClick={handleLogout}>Logout & Reset Stats</button>
+                </div>
+              </div>
+              
+              <div className="panel">
+                <h2>Diagnostics</h2>
+                
+                <div className="stats">
+                  <div className="stat-card">
+                    <div className="stat-value">{mockApi.fetchCount}</div>
+                    <div className="stat-label">API Fetch Calls</div>
+                  </div>
+                </div>
+                
+                <h3>User Information</h3>
+                <div className="card">
+                  <div><strong>Name:</strong> {currentUser?.name}</div>
+                  <div><strong>Email:</strong> {currentUser?.email}</div>
+                  <div><strong>Role:</strong> <span className={`badge badge-${currentUser?.role}`}>{currentUser?.role}</span></div>
+                </div>
+                
+                <h3>Console</h3>
+                <div className="console" id="debug-console"></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <LoginForm onLogin={handleLogin} />
+              
+              <div className="panel">
+                <h2>Login Loop Fix Demo</h2>
+                <p>This demo showcases the solution to the infinite API call loop issue that occurs after login.</p>
+                
+                <div className="card">
+                  <h3>How to Test</h3>
+                  <ol>
+                    <li>Login with any of the test accounts</li>
+                    <li>Observe the "Broken Implementation" tab first - watch the console and API call counter</li>
+                    <li>Switch to "Fixed Implementation" tab to see the proper approach</li>
+                    <li>Try logging in with different roles to see role-based data fetching</li>
+                  </ol>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+    
+    // Render the app
+    ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+  </script>
+</body>
+</html>

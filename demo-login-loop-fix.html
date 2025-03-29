@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Loop Fix Demo</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .flex {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .flex-col {
+      flex-direction: column;
+    }
+    .col {
+      flex: 1;
+      min-width: 300px;
+    }
+    h1, h2 {
+      color: #1890ff;
+    }
+    button {
+      background-color: #1890ff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #40a9ff;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      border: 1px solid #d9d9d9;
+    }
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom: 2px solid #1890ff;
+      color: #1890ff;
+    }
+    .dashboard-card {
+      padding: 16px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .code {
+      background-color: #282c34;
+      color: #abb2bf;
+      padding: 16px;
+      border-radius: 4px;
+      overflow: auto;
+      font-family: 'Courier New', Courier, monospace;
+      max-height: 400px;
+    }
+    .highlight {
+      background-color: #fff7e6;
+      padding: 16px;
+      border-radius: 4px;
+      border-left: 4px solid #faad14;
+      margin-bottom: 16px;
+    }
+    .console {
+      background-color: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      overflow: auto;
+      height: 200px;
+      margin-top: 20px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      background-color: #f0f5ff;
+      border-radius: 4px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1890ff;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #8c8c8c;
+    }
+  </style>
+</head>
+<body>
+  <h1>Login Loop Fix Demo</h1>
+  
+  <div class="highlight">
+    <p><strong>Demo Purpose:</strong> This page demonstrates the login loop fix by simulating the React components with the issue, allowing you to toggle between the broken and fixed implementations.</p>
+    <p>No server is required - this is a fully standalone demo.</p>
+  </div>
+  
+  <div id="app"></div>
+  
+  <script type="text/babel">
+    // Mock localStorage for demo purposes
+    const mockStorage = {
+      items: {},
+      getItem(key) {
+        return this.items[key] || null;
+      },
+      setItem(key, value) {
+        this.items[key] = value;
+        console.log(`localStorage: stored ${key}`);
+      },
+      removeItem(key) {
+        delete this.items[key];
+        console.log(`localStorage: removed ${key}`);
+      },
+      clear() {
+        this.items = {};
+        console.log('localStorage: cleared');
+      }
+    };
+    
+    // Mock API functions with artificial delay
+    const mockApi = {
+      login: (email, password) => {
+        console.log(`Login attempt with ${email}`);
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+              user: {
+                id: '123',
+                name: 'Test User',
+                email,
+                role: 'admin'
+              }
+            });
+          }, 800);
+        });
+      },
+      fetchOrders: () => {
+        console.log('Fetching all orders (admin view)');
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            console.log('Fetched 3 orders');
+            resolve([
+              { id: 1, status: 'pending', customer_name: 'ABC Corp', amount: 1299 },
+              { id: 2, status: 'shipped', customer_name: 'XYZ Inc', amount: 2499 },
+              { id: 3, status: 'delivered', customer_name: 'Acme Co', amount: 999 }
+            ]);
+          }, 600);
+        });
+      },
+      fetchAnalytics: () => {
+        console.log('Fetching analytics data');
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              totalOrders: 3,
+              byStatus: {
+                pending: 1,
+                shipped: 1,
+                delivered: 1
+              }
+            });
+          }, 500);
+        });
+      }
+    };
+    
+    // Auth utilities
+    const auth = {
+      getToken: () => {
+        const token = mockStorage.getItem('auth_token');
+        console.log('Auth token exists in localStorage:', !!token);
+        return token;
+      },
+      storeAuth: (token, user) => {
+        mockStorage.setItem('auth_token', token);
+        mockStorage.setItem('current_user', JSON.stringify(user));
+      },
+      getCurrentUser: () => {
+        const userJson = mockStorage.getItem('current_user');
+        if (!userJson) return null;
+        return JSON.parse(userJson);
+      },
+      hasRole: (role) => {
+        const user = auth.getCurrentUser();
+        return user && user.role === role;
+      },
+      isAuthenticated: () => {
+        return !!auth.getToken() && !!auth.getCurrentUser();
+      },
+      logout: () => {
+        mockStorage.removeItem('auth_token');
+        mockStorage.removeItem('current_user');
+      }
+    };
+
+    // Debug utilities to track stats
+    const debug = {
+      stats: {
+        componentRenders: 0,
+        fetchCalls: 0,
+        authChecks: 0,
+        lastAction: '',
+        events: []
+      },
+      trackEvent(component, action) {
+        const timestamp = new Date().toISOString().split('T')[1].substring(0, 8);
+        this.stats.events.push(`${timestamp} - [${component}] ${action}`);
+        this.stats.lastAction = `${component}: ${action}`;
+        
+        if (action.includes('render')) {
+          this.stats.componentRenders++;
+        }
+        if (action.includes('fetch')) {
+          this.stats.fetchCalls++;
+        }
+        if (action.includes('auth')) {
+          this.stats.authChecks++;
+        }
+      },
+      resetStats() {
+        this.stats = {
+          componentRenders: 0,
+          fetchCalls: 0,
+          authChecks: 0,
+          lastAction: '',
+          events: []
+        };
+      }
+    };
+    
+    // Console override for the demo
+    const originalConsoleLog = console.log;
+    console.log = function(...args) {
+      originalConsoleLog.apply(console, args);
+      
+      const message = args.join(' ');
+      const consoleEl = document.getElementById('debug-console');
+      if (consoleEl) {
+        const entry = document.createElement('div');
+        entry.textContent = `» ${message}`;
+        consoleEl.appendChild(entry);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }
+    };
+    
+    // Login Component
+    function LoginForm({ onLogin }) {
+      const [email, setEmail] = React.useState('admin@example.com');
+      const [password, setPassword] = React.useState('password');
+      const [loading, setLoading] = React.useState(false);
+      
+      React.useEffect(() => {
+        debug.trackEvent('LoginForm', 'rendered');
+      });
+      
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        debug.trackEvent('LoginForm', 'login attempt');
+        
+        try {
+          const result = await mockApi.login(email, password);
+          auth.storeAuth(result.token, result.user);
+          debug.trackEvent('LoginForm', 'login successful');
+          onLogin();
+        } catch (error) {
+          console.error('Login failed', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      return (
+        <div className="card">
+          <h2>Login</h2>
+          <form onSubmit={handleSubmit}>
+            <div>
+              <label className="label">Email</label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Password</label>
+              <input 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+        </div>
+      );
+    }
+    
+    // Broken Dashboard with unnecessary re-renders, but with a limit to prevent browser crashes
+    function BrokenDashboard() {
+      const [orders, setOrders] = React.useState([]);
+      const [analytics, setAnalytics] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const [fetchCount, setFetchCount] = React.useState(0);
+      const user = auth.getCurrentUser();
+      
+      // This useRef allows us to demonstrate the issue without crashing the browser
+      const maxFetches = React.useRef(20);
+      
+      React.useEffect(() => {
+        debug.trackEvent('BrokenDashboard', 'render effect triggered');
+        
+        // Limit the number of fetches to avoid browser crash for demo purposes
+        if (fetchCount >= maxFetches.current) {
+          console.log(`BrokenDashboard - Reached maximum fetch limit (${maxFetches.current}). This is to prevent browser crash.`);
+          console.log('BrokenDashboard - In a real app without this limit, this would continue infinitely.');
+          return;
+        }
+        
+        const fetchData = async () => {
+          debug.trackEvent('BrokenDashboard', 'fetchData started');
+          setLoading(true);
+          
+          try {
+            // This will re-fetch on every render because of 'user' dependency
+            const fetchedOrders = await mockApi.fetchOrders();
+            setOrders(fetchedOrders);
+            
+            // Also fetch analytics
+            const analyticsData = await mockApi.fetchAnalytics();
+            setAnalytics(analyticsData);
+            
+            // Increment fetch count
+            setFetchCount(count => count + 1);
+          } catch (err) {
+            console.error('Error loading data:', err);
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        fetchData();
+      }, [user, fetchCount]); // Notice: depending on the whole user object AND fetchCount
+      
+      if (loading) {
+        return <div>Loading dashboard data...</div>;
+      }
+      
+      return (
+        <div className="card">
+          <h2>Dashboard (Broken Implementation)</h2>
+          <p>User: {user?.name} ({user?.role})</p>
+          
+          <div className="dashboard-card">
+            <h3>Orders ({orders.length})</h3>
+            <ul>
+              {orders.map(order => (
+                <li key={order.id}>
+                  Order #{order.id} - {order.customer_name} (${order.amount})
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          {analytics && (
+            <div className="dashboard-card">
+              <h3>Analytics</h3>
+              <p>Total Orders: {analytics.totalOrders}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Fixed Dashboard with optimization
+    function FixedDashboard() {
+      const [orders, setOrders] = React.useState([]);
+      const [analytics, setAnalytics] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const [isFetching, setIsFetching] = React.useState(false);
+      const user = auth.getCurrentUser();
+      
+      // Store the user ID in a ref to make dependencies more stable
+      const userIdRef = React.useRef(user?.id);
+      
+      // Add lifecycle logging
+      React.useEffect(() => {
+        debug.trackEvent('FixedDashboard', 'component mounted');
+        console.log('FixedDashboard - PROPERLY FIXED VERSION MOUNTED');
+        return () => debug.trackEvent('FixedDashboard', 'component unmounted');
+      }, []);
+      
+      // Load orders based on user role - with optimizations
+      React.useEffect(() => {
+        // Skip if already fetching
+        if (isFetching) {
+          console.log('FixedDashboard - Skipping fetch because already fetching');
+          return;
+        }
+        
+        // Skip if no user
+        if (!user) {
+          console.log('FixedDashboard - Skipping fetch because no user');
+          return;
+        }
+        
+        // Skip if user ID hasn't changed
+        if (user.id === userIdRef.current && orders.length > 0) {
+          console.log('FixedDashboard - Skipping fetch because user ID unchanged and already have orders');
+          return;
+        }
+        
+        // Update ref with current user ID
+        userIdRef.current = user.id;
+        
+        debug.trackEvent('FixedDashboard', 'fetch effect triggered - will actually fetch');
+        
+        const fetchData = async () => {
+          setIsFetching(true);
+          setLoading(true);
+          debug.trackEvent('FixedDashboard', 'fetchData started');
+          console.log('FixedDashboard - SINGLE fetch operation started');
+          
+          try {
+            const fetchedOrders = await mockApi.fetchOrders();
+            setOrders(fetchedOrders);
+            
+            // Also fetch analytics
+            const analyticsData = await mockApi.fetchAnalytics();
+            setAnalytics(analyticsData);
+            
+            console.log('FixedDashboard - SINGLE fetch operation completed');
+          } catch (err) {
+            console.error('Error loading data:', err);
+          } finally {
+            setLoading(false);
+            setIsFetching(false);
+          }
+        };
+        
+        fetchData();
+      }, [user?.id]); // Better: only depends on user ID
+      
+      if (loading) {
+        return <div>Loading dashboard data...</div>;
+      }
+      
+      return (
+        <div className="card">
+          <h2>Dashboard (Fixed Implementation)</h2>
+          <p>User: {user?.name} ({user?.role})</p>
+          
+          <div className="dashboard-card">
+            <h3>Orders ({orders.length})</h3>
+            <ul>
+              {orders.map(order => (
+                <li key={order.id}>
+                  Order #{order.id} - {order.customer_name} (${order.amount})
+                </li>
+              ))}
+            </ul>
+          </div>
+          
+          {analytics && (
+            <div className="dashboard-card">
+              <h3>Analytics</h3>
+              <p>Total Orders: {analytics.totalOrders}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Main App
+    function App() {
+      const [activeTab, setActiveTab] = React.useState('broken');
+      const [authenticated, setAuthenticated] = React.useState(auth.isAuthenticated());
+      
+      React.useEffect(() => {
+        debug.trackEvent('App', 'component mounted');
+        return () => debug.trackEvent('App', 'component unmounted');
+      }, []);
+      
+      const handleLogin = () => {
+        setAuthenticated(true);
+      };
+      
+      const handleLogout = () => {
+        auth.logout();
+        setAuthenticated(false);
+        debug.resetStats();
+        console.log('Logged out and reset stats');
+        
+        // Clear console
+        const consoleEl = document.getElementById('debug-console');
+        if (consoleEl) {
+          consoleEl.innerHTML = '';
+        }
+      };
+      
+      // Code comparison sections
+      const brokenCode = `
+// Broken Implementation
+function Dashboard() {
+  const [orders, setOrders] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const user = getCurrentUser();
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      
+      try {
+        const fetchedOrders = await ordersService.getAllOrders();
+        setOrders(fetchedOrders);
+        
+        const analyticsData = await ordersService.getAnalytics();
+        setAnalytics(analyticsData);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [user]); // Problem: depends on entire user object
+}`;
+
+      const fixedCode = `
+// Fixed Implementation
+function Dashboard() {
+  const [orders, setOrders] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const user = getCurrentUser();
+  
+  useEffect(() => {
+    // Skip if already fetching or no user
+    if (isFetching || !user) return;
+    
+    const fetchData = async () => {
+      setIsFetching(true);
+      setLoading(true);
+      
+      try {
+        const fetchedOrders = await ordersService.getAllOrders();
+        setOrders(fetchedOrders);
+        
+        const analyticsData = await ordersService.getAnalytics();
+        setAnalytics(analyticsData);
+      } finally {
+        setLoading(false);
+        setIsFetching(false);
+      }
+    };
+    
+    fetchData();
+  }, [user?.id, isFetching]); // Fix: only depend on user ID and fetch state
+}`;
+      
+      return (
+        <div>
+          {authenticated ? (
+            <>
+              <div className="flex" style={{alignItems: 'flex-start'}}>
+                <div className="col">
+                  <div className="tabs">
+                    <div 
+                      className={`tab ${activeTab === 'broken' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('broken')}
+                    >
+                      Broken Implementation
+                    </div>
+                    <div 
+                      className={`tab ${activeTab === 'fixed' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('fixed')}
+                    >
+                      Fixed Implementation
+                    </div>
+                    <div 
+                      className={`tab ${activeTab === 'code' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('code')}
+                    >
+                      Code Comparison
+                    </div>
+                  </div>
+                  
+                  <div className={`tab-content ${activeTab === 'broken' ? 'active' : ''}`}>
+                    <BrokenDashboard />
+                  </div>
+                  
+                  <div className={`tab-content ${activeTab === 'fixed' ? 'active' : ''}`}>
+                    <FixedDashboard />
+                  </div>
+                  
+                  <div className={`tab-content ${activeTab === 'code' ? 'active' : ''}`}>
+                    <div className="card">
+                      <h2>Code Comparison</h2>
+                      
+                      <div className="highlight">
+                        <p><strong>Problem:</strong> The broken implementation depends on the entire user object in the useEffect dependency array. Since objects are compared by reference, any re-render creates a new object reference, causing the effect to run again.</p>
+                      </div>
+                      
+                      <h3>Broken Implementation</h3>
+                      <pre className="code">{brokenCode}</pre>
+                      
+                      <h3>Fixed Implementation</h3>
+                      <pre className="code">{fixedCode}</pre>
+                    </div>
+                  </div>
+                  
+                  <button onClick={handleLogout}>Logout & Reset Stats</button>
+                </div>
+                
+                <div className="col">
+                  <div className="card">
+                    <h2>Diagnostics</h2>
+                    
+                    <div className="stats">
+                      <div className="stat-card">
+                        <div className="stat-value">{debug.stats.componentRenders}</div>
+                        <div className="stat-label">Component Renders</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-value">{debug.stats.fetchCalls}</div>
+                        <div className="stat-label">API Fetch Calls</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="stat-value">{debug.stats.authChecks}</div>
+                        <div className="stat-label">Auth Checks</div>
+                      </div>
+                    </div>
+                    
+                    <h3>Last Action</h3>
+                    <div>{debug.stats.lastAction}</div>
+                    
+                    <h3>Recent Events</h3>
+                    <ul>
+                      {debug.stats.events.slice(-5).map((event, idx) => (
+                        <li key={idx}>{event}</li>
+                      ))}
+                    </ul>
+                    
+                    <h3>Console</h3>
+                    <div className="console" id="debug-console"></div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <LoginForm onLogin={handleLogin} />
+          )}
+        </div>
+      );
+    }
+    
+    ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+  </script>
+</body>
+</html>
