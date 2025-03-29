@@ -3,7 +3,7 @@ import {
   adminProcedure, 
   factoryProcedure, 
   createAuthRouter
-} from '../core/trpc';
+} from 'lumos-ts';
 import { erpService } from '../integrations/erp';
 import { TRPCError } from '@trpc/server';
 

@@ -4,7 +4,7 @@ import {
   protectedProcedure, 
   publicProcedure, 
   createAuthRouter
-} from '../core/trpc';
+} from 'lumos-ts';
 import { TRPCError } from '@trpc/server';
 import { userRepository } from '../database/userRepository';
 import { generateToken } from '../auth/jwt';

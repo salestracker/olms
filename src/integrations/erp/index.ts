@@ -1,18 +1,14 @@
+import { ERPAdapter as LumosERPAdapter, LogicMateAdapter as LumosLogicMateAdapter, SuntecAdapter as LumosSuntecAdapter, ERPIntegrationService as LumosERPIntegrationService } from 'lumos-ts';
+
 /**
  * ERP Integration Layer
  * Simulating lumos-ts integration patterns for ERP connectivity
  */
 
-// Base ERPAdapter class (simulating lumos-ts pattern)
-export abstract class ERPAdapter {
-  protected name: string;
-  protected baseUrl: string;
-  protected apiKey: string;
-
+// Base ERPAdapter class (extending lumos-ts base class)
+export abstract class ERPAdapter extends LumosERPAdapter {
   constructor(name: string, config: { baseUrl: string; apiKey: string }) {
-    this.name = name;
-    this.baseUrl = config.baseUrl;
-    this.apiKey = config.apiKey;
+    super(name, config);
   }
 
   // Common adapter methods (from lumos-ts)
@@ -34,10 +30,10 @@ export abstract class ERPAdapter {
   abstract getMockData(endpoint: string): any;
 }
 
-// LogicMate ERP adapter
-export class LogicMateAdapter extends ERPAdapter {
+// LogicMate ERP adapter (extending lumos-ts adapter)
+export class LogicMateAdapter extends LumosLogicMateAdapter {
   constructor(config: { baseUrl: string; apiKey: string }) {
-    super('LogicMate', config);
+    super(config);
   }
 
   async syncOrders(): Promise<any> {
@@ -76,10 +72,10 @@ export class LogicMateAdapter extends ERPAdapter {
   }
 }
 
-// Suntec ERP adapter
-export class SuntecAdapter extends ERPAdapter {
+// Suntec ERP adapter (extending lumos-ts adapter)
+export class SuntecAdapter extends LumosSuntecAdapter {
   constructor(config: { baseUrl: string; apiKey: string }) {
-    super('Suntec', config);
+    super(config);
   }
 
   async getFactoryStatus(): Promise<any> {
@@ -123,7 +119,7 @@ export class SuntecAdapter extends ERPAdapter {
 }
 
 // ERP Integration Service (using lumos-ts pattern)
-export class ERPIntegrationService {
+export class ERPIntegrationService extends LumosERPIntegrationService {
   // Made public for direct access
   public logicMate: LogicMateAdapter;
   public suntec: SuntecAdapter;
@@ -132,6 +128,7 @@ export class ERPIntegrationService {
     logicMate: { baseUrl: string; apiKey: string };
     suntec: { baseUrl: string; apiKey: string };
   }) {
+    super(config);
     this.logicMate = new LogicMateAdapter(config.logicMate);
     this.suntec = new SuntecAdapter(config.suntec);
   }
