@@ -2,30 +2,24 @@
  * ERP Integration Layer
  * Simulating lumos-ts integration patterns for ERP connectivity
  */
+import { ERPAdapter as LumosERPAdapter, LogicMateAdapter as LumosLogicMateAdapter, SuntecAdapter as LumosSuntecAdapter, ERPIntegrationService as LumosERPIntegrationService } from 'lumos-ts';
 
-// Base ERPAdapter class (simulating lumos-ts pattern)
-export abstract class ERPAdapter {
-  protected name: string;
-  protected baseUrl: string;
-  protected apiKey: string;
-
+ // Base ERPAdapter class (extending lumos-ts base class)
+export abstract class ERPAdapter extends LumosERPAdapter {
   constructor(name: string, config: { baseUrl: string; apiKey: string }) {
-    this.name = name;
-    this.baseUrl = config.baseUrl;
-    this.apiKey = config.apiKey;
+    super(name, config);
   }
 
   // Common adapter methods (from lumos-ts)
   async fetchData(endpoint: string): Promise<any> {
     // In a real implementation, this would use axios or fetch with proper error handling
-    console.log(`[${this.name}] Fetching data from ${this.baseUrl}${endpoint}`);
-    
+    console.log(`[${this.adapterName}] Fetching data from ${this.adapterBaseUrl}${endpoint}`);
     // For demo, return mock data
     return this.getMockData(endpoint);
   }
 
   async pushData(endpoint: string, data: any): Promise<boolean> {
-    console.log(`[${this.name}] Pushing data to ${this.baseUrl}${endpoint}`, data);
+    console.log(`[${(this as any).name}] Pushing data to ${(this as any).baseUrl}${endpoint}`, data);
     
     // Mock success
     return true;

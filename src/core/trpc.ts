@@ -2,7 +2,7 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { verifyToken } from '../auth/jwt';
 import { userRepository } from '../database/userRepository';
-
+import { createRouter, createMiddleware } from 'lumos-ts';
 // Define our auth user type (extending lumos-ts types)
 export interface AuthUser {
   id: string;
