@@ -2,44 +2,55 @@
  * ERP Integration Layer
  * Simulating lumos-ts integration patterns for ERP connectivity
  */
-import { ERPAdapter as LumosERPAdapter, LogicMateAdapter as LumosLogicMateAdapter, SuntecAdapter as LumosSuntecAdapter, ERPIntegrationService as LumosERPIntegrationService } from 'lumos-ts';
+import { 
+  ERPAdapter as LumosERPAdapter, 
+  ERPIntegrationService as LumosERPIntegrationService 
+} from 'lumos-ts';
 
-// Base ERPAdapter class (extending lumos-ts base class)
+/**
+ * Base ERPAdapter class (extending lumos-ts base class).
+ * This class is abstract and outlines common ERP functionality.
+ */
 export abstract class ERPAdapter extends LumosERPAdapter {
   constructor(name: string, config: { baseUrl: string; apiKey: string }) {
-    // Pass configuration to parent class
+    // Pass configuration to the lumos-ts parent class
     super(name, config);
   }
 
-  // Common adapter methods (from lumos-ts)
+  /**
+   * Fetch data from the ERP by an endpoint.
+   * In a real implementation, this would use an HTTP client.
+   */
   async fetchData(endpoint: string): Promise<any> {
-    // In a real implementation, this would use axios or fetch with proper error handling
     console.log(`[${this.adapterName}] Fetching data from ${this.adapterBaseUrl}${endpoint}`);
-    
-    // For demo, return mock data
+    // For demo purposes, return mock data using the abstract method.
     return this.getMockData(endpoint);
   }
 
+  /**
+   * Push data to the ERP system.
+   * In a real implementation, this would post data using an HTTP client.
+   */
   async pushData(endpoint: string, data: any): Promise<boolean> {
     console.log(`[${this.adapterName}] Pushing data to ${this.adapterBaseUrl}${endpoint}`, data);
-    
-    // Mock success
+    // For demo purposes, return true to indicate success.
     return true;
   }
   
-  // Abstract method to be implemented by concrete adapters
+  // Force concrete adapters to implement their own mock data method.
   protected abstract getMockData(endpoint: string): any;
 }
 
-// Concrete adapter implementations
+/**
+ * Concrete adapter implementation for LogicMate.
+ */
 export class LogicMateAdapter extends ERPAdapter {
   constructor(config: { baseUrl: string; apiKey: string }) {
     super('LogicMate', config);
   }
   
-  // Implementation of abstract method
+  // Provide mock data specific to LogicMate endpoints.
   protected getMockData(endpoint: string): any {
-    // Return mock data based on endpoint
     if (endpoint.includes('/orders')) {
       return {
         orders: [
@@ -52,21 +63,23 @@ export class LogicMateAdapter extends ERPAdapter {
     return { message: 'No data available for this endpoint' };
   }
   
-  // LogicMate specific methods
+  // LogicMate-specific method to sync inventory.
   async syncInventory(): Promise<boolean> {
     console.log(`[${this.adapterName}] Syncing inventory data`);
     return true;
   }
 }
 
-// Another concrete adapter
+/**
+ * Concrete adapter implementation for Suntec.
+ */
 export class SuntecAdapter extends ERPAdapter {
   constructor(config: { baseUrl: string; apiKey: string }) {
     super('Suntec', config);
   }
   
+  // Provide mock data specific to Suntec endpoints.
   protected getMockData(endpoint: string): any {
-    // Return mock data based on endpoint
     if (endpoint.includes('/inventory')) {
       return {
         inventory: [
@@ -79,20 +92,26 @@ export class SuntecAdapter extends ERPAdapter {
     return { message: 'No data available for this endpoint' };
   }
   
-  // Suntec specific methods
+  // Suntec-specific method to generate ERP report.
   async generateReport(): Promise<any> {
     console.log(`[${this.adapterName}] Generating ERP report`);
     return { reportUrl: 'https://reports.example.com/123456' };
   }
 }
 
-// Integration service using adapters (Facade pattern)
+/**
+ * Integration service using adapters (Facade pattern).
+ * This class extends the lumos-ts ERPIntegrationService
+ * and provides a unified interface to fetch data from multiple ERP adapters.
+ */
 export class ERPIntegrationService extends LumosERPIntegrationService {
   constructor(private readonly adapters: ERPAdapter[]) {
     super();
   }
   
-  // Method to fetch data from all connected ERPs
+  /**
+   * Fetch data from all connected ERP adapters.
+   */
   async fetchAllData(endpoint: string): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
     

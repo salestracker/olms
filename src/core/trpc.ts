@@ -1,10 +1,8 @@
-import { initTRPC, TRPCError } from '@trpc/server';
-import { z } from 'zod';
+import { createRouter, createMiddleware } from 'lumos-ts';
 import { verifyToken } from '../auth/jwt';
 import { userRepository } from '../database/userRepository';
-import { createRouter, createMiddleware } from 'lumos-ts';
 
-// Define our auth user type (extending lumos-ts types)
+// Define our authenticated user type.
 export interface AuthUser {
   id: string;
   email: string;
@@ -12,80 +10,80 @@ export interface AuthUser {
   permissions: string[];
 }
 
-// Initialize TRPC with context type
-const t = initTRPC.context<{ user?: AuthUser }>().create();
+// Create a TRPC-like router with a context that includes the Express request and response plus an optional user.
+export const t = createRouter<{ req: any; res: any; user?: AuthUser }>();
 
-// Export base procedures
+// Define a "public" procedure that does not require authentication.
 export const publicProcedure = t.procedure;
-export const router = t.router;
-export const middleware = t.middleware;
 
-// Auth middleware - validates JWT token and adds user to context
-export const authMiddleware = middleware(async ({ ctx, next }) => {
-  const token = ctx.req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Authentication token missing',
-    });
-  }
-  
-  try {
-    // Verify token and get user ID
-    const decoded = verifyToken(token);
-    const userId = decoded.sub;
-    
-    // Get user from repository
-    const user = await userRepository.findById(userId);
-    
-    if (!user) {
-      throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'User not found',
-      });
-    }
-    
-    // Add user to context
-    return next({
-      ctx: {
-        ...ctx,
-        user: {
+// Export the router for building further procedures.
+export const router = t.router;
+
+// Export the middleware creator from lumos-ts.
+export const middleware = createMiddleware;
+
+// Create and export a context creation function that extracts HTTP info and attempts authentication.
+export const createContext = async ({ req, res }: { req: any; res: any }) => {
+  const ctx = { req, res, user: undefined as AuthUser | undefined };
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = verifyToken(token);
+      const user = await userRepository.findById(decoded.sub);
+      if (user) {
+        ctx.user = {
           id: user.id,
           email: user.email,
           role: user.role,
           permissions: user.permissions,
-        },
+        };
+      }
+    } catch (error) {
+      // If token verification fails, context remains unauthenticated.
+    }
+  }
+  return ctx;
+};
+
+// Create an authentication middleware that validates the JWT token and enriches the context with the authenticated user.
+export const authMiddleware = createMiddleware(async ({ req, res, ctx }, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    throw new Error('UNAUTHORIZED: Authentication token missing');
+  }
+  try {
+    const decoded = verifyToken(token);
+    const user = await userRepository.findById(decoded.sub);
+    if (!user) {
+      throw new Error('UNAUTHORIZED: User not found');
+    }
+    // Extend the context with authenticated user details.
+    const newCtx = {
+      ...ctx,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions,
       },
-    });
+    };
+    return next({ ctx: newCtx });
   } catch (error) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Invalid or expired token',
-    });
+    throw new Error('UNAUTHORIZED: Invalid or expired token');
   }
 });
 
-// Create protected procedure with auth middleware
+// Create a protected procedure by using the auth middleware.
 export const protectedProcedure = publicProcedure.use(authMiddleware);
 
-// Role-based access control middleware
-export const roleMiddleware = (allowedRoles: string[]) => {
-  return middleware(async ({ ctx, next }) => {
+// Create and export a role-based middleware that checks if the user has one of the allowed roles.
+export const roleMiddleware = (allowedRoles: string[]) =>
+  createMiddleware(async ({ ctx }, next) => {
     if (!ctx.user) {
-      throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'Authentication required',
-      });
+      throw new Error('UNAUTHORIZED: Authentication required');
     }
-    
     if (!allowedRoles.includes(ctx.user.role)) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions',
-      });
+      throw new Error('FORBIDDEN: Insufficient permissions');
     }
-    
     return next();
   });
-};

@@ -45,7 +45,8 @@
     "@types/react-dom": "^18.0.0",
     "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vite-plugin-node-polyfills": "^0.23.0"
   },
   "scripts": {
     "dev:server": "node -r ts-node/register src/index.ts",
