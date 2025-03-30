@@ -1,3 +1,8 @@
+import process from 'process/browser';
+if (typeof window !== 'undefined') {
+  window.process = process;
+}
+
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { isAuthenticated, clearAuth, getToken } from "./utils/auth";
