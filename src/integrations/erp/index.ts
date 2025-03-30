@@ -13,8 +13,7 @@ export abstract class ERPAdapter extends LumosERPAdapter {
   // Common adapter methods (from lumos-ts)
   async fetchData(endpoint: string): Promise<any> {
     // In a real implementation, this would use axios or fetch with proper error handling
-    console.log(`[${(this as any).name}] Fetching data from ${(this as any).baseUrl}${endpoint}`);
-    
+    console.log(`[${this.adapterName}] Fetching data from ${this.adapterBaseUrl}${endpoint}`);
     // For demo, return mock data
     return this.getMockData(endpoint);
   }
