@@ -3,139 +3,89 @@ import { z } from 'zod';
 import { verifyToken } from '../auth/jwt';
 import { userRepository } from '../database/userRepository';
 import { createRouter, createMiddleware } from 'lumos-ts';
+
 // Define our auth user type (extending lumos-ts types)
 export interface AuthUser {
   id: string;
-  name: string;
   email: string;
-  role: 'admin' | 'customer' | 'factory';
+  role: string;
+  permissions: string[];
 }
 
-// Define context shape
-export interface Context {
-  user?: AuthUser | null;
-  isAuthenticated: boolean;
-}
+// Initialize TRPC with context type
+const t = initTRPC.context<{ user?: AuthUser }>().create();
 
-// Create the auth context from request
-export const createAuthContext = (req: any): Context => {
-  // Extract authorization header
-  const authHeader = req.headers.authorization;
-  
-  // Debug information for request headers
-  console.log('Request headers:', {
-    auth: authHeader ? `${authHeader.substring(0, 15)}...` : 'none',
-    contentType: req.headers['content-type']
-  });
-  
-  if (!authHeader) {
-    console.warn('Authentication failed: No authorization header');
-    return { isAuthenticated: false };
-  }
-  
-  if (!authHeader.startsWith('Bearer ')) {
-    console.warn('Authentication failed: Invalid authorization format (should start with "Bearer ")');
-    return { isAuthenticated: false };
-  }
-  
-  // Extract token
-  const token = authHeader.split(' ')[1];
+// Export base procedures
+export const publicProcedure = t.procedure;
+export const router = t.router;
+export const middleware = t.middleware;
+
+// Auth middleware - validates JWT token and adds user to context
+export const authMiddleware = middleware(async ({ ctx, next }) => {
+  const token = ctx.req.headers.authorization?.split(' ')[1];
   
   if (!token) {
-    console.warn('Authentication failed: Empty token');
-    return { isAuthenticated: false };
-  }
-  
-  // Verify token
-  const payload = verifyToken(token);
-  if (!payload) {
-    console.warn('Authentication failed: Invalid or expired token');
-    return { isAuthenticated: false };
-  }
-  
-  // Get the user from the database
-  const user = userRepository.getById(payload.id);
-  
-  if (!user) {
-    console.warn(`Authentication failed: User id ${payload.id} not found in database`);
-    return { isAuthenticated: false };
-  }
-  
-  console.log(`User authenticated: ${user.email} (${user.role})`);
-  
-  return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role as 'admin' | 'customer' | 'factory'
-    },
-    isAuthenticated: true
-  };
-};
-
-// Create the base context function
-export const createContext = async ({ req, res }: any) => {
-  return createAuthContext(req);
-};
-
-// Initialize TRPC with our context and error formatting
-export const t = initTRPC.context<Context>().create({
-  errorFormatter({ shape, error }) {
-    console.error('TRPC Error:', error);
-    return {
-      ...shape,
-      message: error.message,
-      code: shape.code,
-      data: {
-        ...shape.data,
-        stack: error.stack,
-      }
-    };
-  },
-});
-
-// Create middleware for authorization
-export const isAuthorized = t.middleware(({ ctx, next }) => {
-  if (!ctx.isAuthenticated) {
-    console.error('Authorization failed: Not authenticated');
-    throw new TRPCError({ 
+    throw new TRPCError({
       code: 'UNAUTHORIZED',
-      message: 'You must be logged in to access this resource'
+      message: 'Authentication token missing',
     });
   }
-  return next();
-});
-
-// Role-based middleware (simulating lumos-ts's withAuth)
-export const withAuth = (roles?: string[]) => {
-  return t.middleware(({ ctx, next }) => {
-    if (!ctx.isAuthenticated) {
-      console.error('Authentication required for role access');
-      throw new TRPCError({ 
-        code: 'UNAUTHORIZED', 
-        message: 'Authentication required to access this resource'
+  
+  try {
+    // Verify token and get user ID
+    const decoded = verifyToken(token);
+    const userId = decoded.sub;
+    
+    // Get user from repository
+    const user = await userRepository.findById(userId);
+    
+    if (!user) {
+      throw new TRPCError({
+        code: 'UNAUTHORIZED',
+        message: 'User not found',
       });
     }
     
-    if (roles && roles.length > 0 && ctx.user && !roles.includes(ctx.user.role)) {
-      console.error(`Role permission denied: ${ctx.user?.role} tried to access endpoint requiring ${roles.join(', ')}`);
-      throw new TRPCError({ 
-        code: 'FORBIDDEN', 
-        message: `Access denied: Your role (${ctx.user?.role}) does not have permission for this operation.` 
+    // Add user to context
+    return next({
+      ctx: {
+        ...ctx,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          permissions: user.permissions,
+        },
+      },
+    });
+  } catch (error) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Invalid or expired token',
+    });
+  }
+});
+
+// Create protected procedure with auth middleware
+export const protectedProcedure = publicProcedure.use(authMiddleware);
+
+// Role-based access control middleware
+export const roleMiddleware = (allowedRoles: string[]) => {
+  return middleware(async ({ ctx, next }) => {
+    if (!ctx.user) {
+      throw new TRPCError({
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+      });
+    }
+    
+    if (!allowedRoles.includes(ctx.user.role)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Insufficient permissions',
       });
     }
     
     return next();
   });
 };
-
-// Create procedures with different auth requirements
-export const publicProcedure = t.procedure;
-export const protectedProcedure = t.procedure.use(isAuthorized);
-export const adminProcedure = protectedProcedure.use(withAuth(['admin']));
-export const factoryProcedure = protectedProcedure.use(withAuth(['factory']));
-export const customerProcedure = protectedProcedure.use(withAuth(['customer']));
-
-// This simulates lumos-ts's router factory pattern
-export const createAuthRouter = t.router;
