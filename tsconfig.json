@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "jsx": "react-jsx",
     "module": "commonjs",
     "target": "es2019",
     "strict": true,
@@ -7,7 +8,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["src"]
+  "include": ["src", "types"]
 }
