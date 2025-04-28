@@ -31,7 +31,7 @@ The backend is deployed to Render using the following steps:
 1. Create a new Web Service on Render
 2. Connect your GitHub repository
 3. Configure the service with these settings:
-   - **Name**: zenith-olms-backend
+   - **Name**: olms
    - **Environment**: Node
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
