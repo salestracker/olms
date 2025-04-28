@@ -44,7 +44,9 @@ export const orderService = {
       }
       
       // Use the TRPC client for real API
-      return await trpcClient.orders.getByStatus.query({ status });
+      // Cast status to the expected type
+      const validStatus = status as "processing" | "manufacturing" | "delivered" | "pending" | "quality_check" | "shipped" | "cancelled";
+      return await trpcClient.orders.getByStatus.query({ status: validStatus });
     } catch (error) {
       console.error('Error getting orders by status:', error);
       return [];
@@ -76,7 +78,15 @@ export const orderService = {
       }
       
       // Use the TRPC client for real API
-      return await trpcClient.orders.create.mutate(orderData);
+      // For server-side, use a different approach since create might not be available
+      if (typeof window === 'undefined') {
+        // Server-side implementation
+        console.log('Server-side create not implemented');
+        throw new Error('Server-side create not implemented');
+      }
+      
+      // Client-side implementation
+      return await trpcClient.orders.createOrder.mutate(orderData);
     } catch (error) {
       console.error('Error creating order:', error);
       throw error;
@@ -92,7 +102,15 @@ export const orderService = {
       }
       
       // Use the TRPC client for real API
-      return await trpcClient.orders.update.mutate({ id, ...orderData });
+      // For server-side, use a different approach since update might not be available
+      if (typeof window === 'undefined') {
+        // Server-side implementation
+        console.log('Server-side update not implemented');
+        throw new Error('Server-side update not implemented');
+      }
+      
+      // Client-side implementation
+      return await trpcClient.orders.updateOrder.mutate({ id, ...orderData });
     } catch (error) {
       console.error('Error updating order:', error);
       throw error;

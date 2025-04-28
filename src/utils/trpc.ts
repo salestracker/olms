@@ -97,7 +97,8 @@ export const ordersService = {
     try {
       console.log(`Fetching orders with status: ${status}`);
       // Use the TRPC client directly for proper input handling
-      return await trpcClient.orders.getByStatus.query({ status });
+      const validStatus = status as "processing" | "manufacturing" | "delivered" | "pending" | "quality_check" | "shipped" | "cancelled";
+      return await trpcClient.orders.getByStatus.query({ status: validStatus });
     } catch (error) {
       console.error(`Error fetching orders with status ${status}:`, error);
       return [];
@@ -154,7 +155,7 @@ export const ordersService = {
 };
 
 // Helper function to handle API errors consistently
-export const handleApiError = (error: unknown): { message: string; code?: string } => {
+export const handleApiError = (error: unknown): { message: string; code: string } => {
   console.error('API Error:', error);
   
   if (typeof error === 'object' && error !== null && 'message' in error) {
