@@ -3,12 +3,13 @@
 // Determine the base API URL based on the environment
 export const getApiBaseUrl = (): string => {
   // For local development
-  if (import.meta.env.DEV) {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
     return 'http://localhost:4000';
   }
   
   // For production - using Render for backend hosting
-  // Using the actual Render deployment URL.onrender.com';
+  return 'https://olms-dqtb.onrender.com';
 };
 
 // Get the full API URL for a specific endpoint
