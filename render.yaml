@@ -1,7 +1,7 @@
 services:
   # Backend API service
   - type: web
-    name: zenith-backend
+    name: olms
     env: node
     buildCommand: npm install && npm run build:server
     startCommand: npm start
