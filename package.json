@@ -57,7 +57,7 @@
     "build": "vite build",
     "build:server": "tsc --project tsconfig.server.json",
     "preview": "vite preview",
-    "predeploy": "vite build --base=/olms/",
+    "predeploy": "vite build --base=/olms/ && cp public/404.html dist/",
     "deploy": "gh-pages -d dist",
     "start": "node dist/server/index.js",
     "start:dev": "node -r ts-node/register src/index.ts"
