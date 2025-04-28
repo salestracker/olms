@@ -48,7 +48,7 @@ export const getCurrentUser = (): User | null => {
 };
 
 /**
- * Check if the user is authenticated
+ * Check if the user is authenticated (client-side only)
  */
 export const isAuthenticated = (): boolean => {
   return !!getToken() && !!getCurrentUser();

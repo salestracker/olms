@@ -4,7 +4,7 @@ import {
   protectedProcedure, 
   publicProcedure, 
   createAuthRouter
-} from 'lumos-ts';
+} from '../core/trpc';
 import { TRPCError } from '@trpc/server';
 import { userRepository } from '../database/userRepository';
 import { generateToken } from '../auth/jwt';
@@ -75,9 +75,21 @@ export const usersRouter = createAuthRouter({
       }
     }),
   
-  // Protected: Get current user from JWT context
+  // Protected: Get current user from JWT context (as query)
   me: protectedProcedure
     .query(({ ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated'
+        });
+      }
+      return ctx.user;
+    }),
+    
+  // Protected: Get current user from JWT context (as mutation for compatibility)
+  meAsMutation: protectedProcedure
+    .mutation(({ ctx }) => {
       if (!ctx.user) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',

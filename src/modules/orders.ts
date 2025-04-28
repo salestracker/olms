@@ -5,7 +5,7 @@ import {
   customerProcedure, 
   protectedProcedure, 
   createAuthRouter
-} from 'lumos-ts';
+} from '../core/trpc';
 import { orderRepository } from '../database/orderRepository';
 
 // Define the schema for order status using Zod validation

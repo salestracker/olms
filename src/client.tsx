@@ -5,7 +5,8 @@ if (typeof window !== 'undefined') {
 
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { isAuthenticated, clearAuth, getToken } from "./utils/auth";
+import { isAuthenticated, clearAuth, getToken, getCurrentUser } from "./utils/auth";
+import { loginService } from "./utils/trpc";
 import LoginPage from "./components/auth/LoginPage";
 import Header from "./components/layout/Header";
 import Dashboard from "./components/layout/Dashboard";
@@ -28,7 +29,7 @@ const App: React.FC = () => {
     console.log('App component mounted');
     
     // Check authentication status
-    const checkAuth = () => {
+    const checkAuth = async () => {
       // Prevent multiple concurrent auth checks
       if (isCheckingAuth) return;
       
@@ -45,17 +46,32 @@ const App: React.FC = () => {
         }
         
         console.log('Auth check: token exists, checking validity');
-        // Check if authenticated by calling the isAuthenticated function
-        const authStatus = isAuthenticated();
-        setAuthenticated(authStatus);
         
-        if (!authStatus) {
-          console.warn('Token exists but is invalid or expired');
+        // First check if we have a user in localStorage
+        const localUser = getCurrentUser();
+        if (!localUser) {
+          console.warn('No user data in localStorage');
+          setAuthenticated(false);
           setAuthError('Your session has expired. Please log in again.');
-        } else {
-          console.log('Authentication successful');
-          setAuthError(null);
+          setLoading(false);
+          return;
         }
+        
+        // Set authenticated based on local data
+        setAuthenticated(true);
+        setAuthError(null);
+        
+        // Try to validate with the server in the background
+        try {
+          const apiUser = await loginService.getCurrentUser();
+          if (apiUser) {
+            console.log('Authentication validated with server');
+          }
+        } catch (apiError) {
+          console.warn('Server validation failed, but continuing with local auth:', apiError);
+        }
+        
+        console.log('Authentication successful');
       } catch (error) {
         console.error('Authentication check error:', error);
         setAuthError('Authentication error. Please try again.');

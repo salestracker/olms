@@ -3,7 +3,7 @@ import {
   adminProcedure, 
   factoryProcedure, 
   createAuthRouter
-} from 'lumos-ts';
+} from '../core/trpc';
 import { erpService } from '../integrations/erp';
 import { TRPCError } from '@trpc/server';
 
@@ -48,7 +48,7 @@ export const erpRouter = createAuthRouter({
   // Get order details from both ERPs
   getOrderERPDetails: adminProcedure
     .input(z.object({ orderId: z.string() }))
-    .query(async ({ input }: { input: { orderId: string } }) => {
+    .query(async ({ input }) => {
       try {
         return await erpService.getOrderDetails(input.orderId);
       } catch (error) {
@@ -83,7 +83,7 @@ export const erpRouter = createAuthRouter({
       productId: z.string(),
       quantity: z.number().int().positive()
     }))
-    .mutation(async ({ input }: { input: { productId: string; quantity: number } }) => {
+    .mutation(async ({ input }) => {
       try {
         const result = await erpService.logicMate.updateInventory(
           input.productId,
@@ -107,7 +107,7 @@ export const erpRouter = createAuthRouter({
       orderId: z.string(),
       status: z.string()
     }))
-    .mutation(async ({ input }: { input: { orderId: string; status: string } }) => {
+    .mutation(async ({ input }) => {
       try {
         const result = await erpService.suntec.updateOrderStatus(
           input.orderId,

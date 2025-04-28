@@ -33,8 +33,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error: authError }) => {
       console.log('Attempting login with credentials:', { email });
       
       const result = await loginService.login(email, password);
+      console.log('Login result:', result);
       
-      if (result?.token && result?.user) {
+      if (result && result.token && result.user) {
         // Log the token format for debugging
         const isValidJwtFormat = result.token.split('.').length === 3;
         console.log('Login successful, token info:', {
@@ -49,7 +50,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error: authError }) => {
         onLogin();
       } else {
         console.error('Invalid login response:', result);
-        setError('Invalid login response');
+        setError('Invalid login response structure. Check console for details.');
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -72,8 +73,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error: authError }) => {
       console.log('Attempting quick login with credentials:', { testEmail });
       
       const result = await loginService.login(testEmail, testPassword);
+      console.log('Quick login result:', result);
       
-      if (result?.token && result?.user) {
+      if (result && result.token && result.user) {
         // Log the token format for debugging
         const isValidJwtFormat = result.token.split('.').length === 3;
         console.log('Quick login successful, token info:', {
@@ -88,7 +90,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error: authError }) => {
         onLogin();
       } else {
         console.error('Invalid login response from quick login:', result);
-        setError('Invalid login response');
+        setError('Invalid login response structure. Check console for details.');
       }
     } catch (err: any) {
       console.error('Quick login error:', err);
@@ -137,12 +139,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error: authError }) => {
   const testBackendAuth = () => {
     // Test backend authentication
     fetch('http://localhost:4000/trpc/users.me', {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify({ json: {} })
+      }
     })
     .then(response => response.json())
     .then(data => {
