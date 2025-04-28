@@ -8,7 +8,8 @@ export const getApiBaseUrl = (): string => {
   }
   
   // For production - using Render for backend hosting
-  return 'https://olms-zenitholms-.onrender.com'; // Will be your Render app URL
+  // Update this URL with your actual Render deployment URL after creating the service
+  return 'https://zenith-olms-backend.onrender.com';
 };
 
 // Get the full API URL for a specific endpoint
