@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #1890ff;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+    .card {
+      background: #f9f9f9;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #1890ff;
+      border: none;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 4px;
+      overflow: auto;
+      max-height: 300px;
+      margin-top: 10px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    .debug-section {
+      margin-top: 30px;
+      background-color: #fff8e6;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #ffe58f;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zenith Login Debugging Tool</h1>
+  
+  <div class="card">
+    <h2>Login Form</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" value="admin@zenith.com" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" value="admin123" required>
+      </div>
+      <button type="submit">Login</button>
+      <button type="button" onclick="clearAuth()">Clear Auth</button>
+    </form>
+    <pre id="loginResponse">Response will appear here...</pre>
+  </div>
+
+  <div class="debug-section">
+    <h2>Debug Information</h2>
+    <div>
+      <button onclick="checkAuthStatus()">Check Auth Status</button>
+      <button onclick="testBackend()">Test Backend Connection</button>
+      <button onclick="tryCurrentUser()">Try Get Current User</button>
+    </div>
+    <pre id="debugOutput">Debug output will appear here...</pre>
+  </div>
+  
+  <script>
+    // Login form submission
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      try {
+        // This is the correct format for tRPC request - ensuring explicit values
+        const requestBody = {
+          json: {
+            email: email.trim(),
+            password: password.trim()
+          }
+        };
+        
+        // Log request details
+        console.log('Login request:', {
+          url: 'http://localhost:4000/trpc/users.login',
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          body: requestBody
+        });
+        
+        document.getElementById('debugOutput').textContent = 'Sending request: ' + 
+          JSON.stringify(requestBody, null, 2);
+        
+        // Log the exact body content being sent
+        console.log('Request body as string:', JSON.stringify(requestBody));
+
+        // Make the request with explicit parameters
+        const response = await fetch('http://localhost:4000/trpc/users.login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        // Log the raw response for debugging
+        console.log('Raw response status:', response.status);
+        
+        // Parse response
+        const data = await response.json();
+        console.log('Login response:', data);
+        
+        // Display response
+        document.getElementById('loginResponse').textContent = JSON.stringify(data, null, 2);
+        
+        // If success, store token and user
+        if (data.result?.data?.token) {
+          localStorage.setItem('auth_token', data.result.data.token);
+          localStorage.setItem('current_user', JSON.stringify(data.result.data.user));
+          
+          // Update the debug output
+          document.getElementById('debugOutput').textContent += '\n\nAuthentication successful!' +
+            '\nToken: ' + data.result.data.token.substring(0, 20) + '...' +
+            '\nUser: ' + JSON.stringify(data.result.data.user, null, 2);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        document.getElementById('loginResponse').textContent = `Error: ${error.message}`;
+      }
+    });
+    
+    // Clear authentication
+    function clearAuth() {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('current_user');
+      document.getElementById('debugOutput').textContent = 'Auth cleared from localStorage';
+    }
+    
+    // Check auth status
+    function checkAuthStatus() {
+      const token = localStorage.getItem('auth_token');
+      const user = localStorage.getItem('current_user');
+      
+      let output = 'Auth Status:\n';
+      output += `Token exists: ${!!token}\n`;
+      if (token) {
+        output += `Token preview: ${token.substring(0, 20)}...\n`;
+        output += `Token length: ${token.length}\n`;
+        output += `Valid JWT format: ${token.split('.').length === 3}\n`;
+      }
+      
+      output += `User exists: ${!!user}\n`;
+      if (user) {
+        try {
+          const userData = JSON.parse(user);
+          output += `User data: ${JSON.stringify(userData, null, 2)}`;
+        } catch (e) {
+          output += `Error parsing user data: ${e.message}`;
+        }
+      }
+      
+      document.getElementById('debugOutput').textContent = output;
+    }
+    
+    // Test backend connection
+    async function testBackend() {
+      try {
+        const response = await fetch('http://localhost:4000/api/health');
+        const data = await response.json();
+        document.getElementById('debugOutput').textContent = 'Backend health check:\n' + 
+          JSON.stringify(data, null, 2);
+      } catch (error) {
+        document.getElementById('debugOutput').textContent = `Backend connection error: ${error.message}`;
+      }
+    }
+    
+    // Try to get current user with token
+    async function tryCurrentUser() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          document.getElementById('debugOutput').textContent = 'No auth token found. Please login first.';
+          return;
+        }
+        
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        
+        document.getElementById('debugOutput').textContent = 'Sending request to /trpc/users.me with token...';
+        
+        const response = await fetch('http://localhost:4000/trpc/users.me', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ json: {} })
+        });
+        
+        const data = await response.json();
+        document.getElementById('debugOutput').textContent = 'Current user response:\n' + 
+          JSON.stringify(data, null, 2);
+      } catch (error) {
+        document.getElementById('debugOutput').textContent = `Error getting current user: ${error.message}`;
+      }
+    }
+    
+    // Check status on load
+    window.onload = function() {
+      checkAuthStatus();
+    };
+  </script>
+</body>
+</html>
