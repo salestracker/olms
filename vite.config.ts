@@ -29,7 +29,14 @@ export default defineConfig({
   build: {
     // Mark server-specific modules as external. This prevents Vite from bundling them into the client code.
     rollupOptions: {
-      external: ['express', 'lumos-ts']
-    }
+      external: ['express', 'lumos-ts'],
+      output: {
+        manualChunks: undefined
+      }
+    },
+    // Ensure assets are handled correctly
+    assetsDir: 'assets',
+    emptyOutDir: true,
+    sourcemap: false
   },
 });
