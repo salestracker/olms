@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 # Use ts-node or npx ts-node if available, otherwise try to run JavaScript version
 if command -v npx &> /dev/null; then
   echo "Using npx ts-node to run TypeScript..."
-  npx ts-node src/index.ts &
+  npm run dev:server &
   BACKEND_PID=$!
 else
   echo "Fallback to JavaScript file if compiled..."
@@ -31,7 +31,8 @@ sleep 3
 
 # Start the frontend dev server (on port 3000)
 echo "Starting frontend dev server on port 3000..."
-npx vite &
+# Make sure we're using the original client.tsx, not the GitHub Pages version
+npx vite --config vite.config.ts &
 FRONTEND_PID=$!
 
 echo "Frontend server started with PID: $FRONTEND_PID"
