@@ -33,7 +33,7 @@ The backend is deployed to Render using the following steps:
 3. Configure the service with these settings:
    - **Name**: olms
    - **Environment**: Node
-   - **Build Command**: `npm install`
+   - **Build Command**: `npm install && npm run build:server`
    - **Start Command**: `npm start`
    - **Environment Variables**:
      - `NODE_ENV`: production
