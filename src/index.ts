@@ -26,7 +26,14 @@ console.log('Database initialized!');
 const app = express();
 
 // Set up essential middleware.
-app.use(cors());
+// Configure CORS to allow requests from GitHub Pages
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || 'https://salestracker.github.io',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static('public'));
@@ -109,7 +116,8 @@ app.get('/api/erp/sync', async (req, res) => {
   }
 });
 
-const port = 4000;
+const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Zenith OLMS server running on port ${port} with lumos-ts integration`);
+  console.log(`CORS configured for origin: ${corsOptions.origin}`);
 });

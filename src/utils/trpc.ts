@@ -3,12 +3,13 @@ import type { AppRouter } from '../index';
 // Import superjson for serialization
 import superjson from 'superjson';
 import { getToken, getAuthHeaders } from './auth';
+import { getTrpcUrl } from './apiConfig';
 
 // Create a TRPC client
 export const trpcClient = createTRPCProxyClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: 'http://localhost:4000/trpc',
+      url: getTrpcUrl(),
       headers: () => {
         const token = getToken();
         return token ? { Authorization: `Bearer ${token}` } : {};
@@ -18,7 +19,7 @@ export const trpcClient = createTRPCProxyClient<AppRouter>({
   transformer: superjson,
 });
 
-// Simple service implementations
+// Service implementations
 export const loginService = {
   login: async (email: string, password: string) => {
     try {

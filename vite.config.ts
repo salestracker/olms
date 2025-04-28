@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/olms/', // Base path for GitHub Pages - matches repository name
   server: {
     port: 3000,
     open: true,

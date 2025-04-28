@@ -1,0 +1,16 @@
+services:
+  # Backend API service
+  - type: web
+    name: zenith-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://salestracker.github.io
