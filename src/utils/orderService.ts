@@ -110,7 +110,11 @@ export const orderService = {
       }
       
       // Client-side implementation
-      return await trpcClient.orders.updateOrder.mutate({ id, ...orderData });
+      return await trpcClient.orders.updateStatus.mutate({ 
+        id, 
+        status: orderData.status,
+        description: orderData.details || ''
+      });
     } catch (error) {
       console.error('Error updating order:', error);
       throw error;
